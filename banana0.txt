@@ -1,0 +1,230 @@
+#include <Servo.h>    
+#include <PS2X_lib.h>  //for v1.6
+
+// set pins connected to PS2 controller
+
+#define PS2_DAT        13  //14    
+#define PS2_CMD        11  //15
+#define PS2_SEL        10  //16
+#define PS2_CLK        12  //17
+
+// set pins controller Moduie L298N
+
+#define  enB           3
+#define  pinB2         4
+#define  enA           5
+#define  pinA2         6
+#define  pinA1         7
+#define  pinB1         8
+
+#define pressures   false
+
+#define rumble      false
+
+//select modes of PS2 controller:
+
+//#define pressures   true
+#define pressures   false
+//#define rumble      true
+#define rumble      false
+
+PS2X ps2x; // create PS2 Controller Class
+
+Servo myservo;  
+
+int error = 0;
+byte type = 0;
+byte vibrate = 0;
+int speed_motorA ;
+int speed_motorB  ;
+
+void setup(){
+ 
+  Serial.begin(57600);  
+  delay(300);  //added delay to give wireless ps2 module some time to startup, before configuring it
+  //setup pins and settings: GamePad(clock, command, attention, data, Pressures?, Rumble?) check for error
+  error = ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, pressures, rumble);
+  
+  if(error == 0)
+  Serial.print("Found Controller, configured successful ");
+  
+  type = ps2x.readType(); 
+
+  // setup pins modes
+
+  pinMode (pinA1, OUTPUT);
+  pinMode (pinB1, OUTPUT);
+  pinMode (pinB2, OUTPUT);
+  pinMode (pinA2, OUTPUT);
+  pinMode (enA, OUTPUT);
+  pinMode (enB, OUTPUT);
+
+
+  digitalWrite(enA,LOW);
+  digitalWrite(enB,LOW);
+  digitalWrite(pinA1, LOW);
+  digitalWrite(pinA2, LOW);
+  digitalWrite(pinB1, LOW);
+  digitalWrite(pinB2, LOW);
+
+  myservo.attach(9);
+  
+  }
+
+  // cars stop
+
+  void car_stop()
+   {
+     digitalWrite(enA,LOW);
+     digitalWrite(enB,LOW);
+     digitalWrite(pinA1, LOW);
+     digitalWrite(pinA2, LOW);
+     digitalWrite(pinB1, LOW);
+     digitalWrite(pinB2, LOW);  
+   }
+
+  // car forward
+ 
+   void car_forward(int speed_motorA, int speed_motorB)
+   {
+     digitalWrite(pinA2, HIGH);
+     digitalWrite(pinA1, LOW);
+
+     digitalWrite(pinB1, HIGH);
+     digitalWrite(pinB2, LOW);
+       
+     analogWrite (enA, speed_motorA);
+     analogWrite (enB, speed_motorB);
+ 
+   }
+
+  // car Back
+   void car_back(int speed_motorA, int speed_motorB)
+   {
+     digitalWrite(pinA1, HIGH);
+     digitalWrite(pinA2, LOW);
+
+     digitalWrite(pinB2, HIGH);
+     digitalWrite(pinB1, LOW);
+       
+     analogWrite (enA, speed_motorA);
+     analogWrite (enB, speed_motorB);
+   }
+
+   // car turn left
+    void car_turn_left()
+    {
+        digitalWrite(pinA1, HIGH);
+        digitalWrite(pinA2, LOW);
+       
+        digitalWrite(pinB1, HIGH);
+        digitalWrite(pinB2, LOW);
+
+        analogWrite (enA, 255);
+        analogWrite (enB, 255);
+    }
+
+   // car turn right
+    void car_turn_right()
+    {
+        digitalWrite(pinA2, HIGH);
+        digitalWrite(pinA1, LOW);
+        
+       
+        digitalWrite(pinB2, HIGH);
+        digitalWrite(pinB1, LOW);
+
+        analogWrite (enA, 255);
+        analogWrite (enB, 255);
+    }
+
+   // kick the ball
+    void kick_ball()
+    {
+        myservo.write(180);  
+        delay(100);
+        myservo.write(0);  
+        delay(100);
+    }
+
+
+    /////////////////////////////////////////////////////////////////////////
+    void loop() {
+        car_stop();
+        if(error == 1) //skip loop if no controller found
+           return; 
+        if(type == 2){ //Guitar Hero Controller
+           ps2x.read_gamepad();          //read controller 
+        }
+
+        else { // DualShock controller
+            ps2x.read_gamepad(false, vibrate);
+            // car run forward
+            if(ps2x.Button(PSB_PAD_UP)) {      //will be TRUE as long as button is pressed
+               car_back(255, 255) ;
+               Serial.println("car run forward ");
+            }
+
+            // car run for Back
+            if(ps2x.Button(PSB_PAD_DOWN)){
+               car_forward(255, 255);
+               Serial.println("car run back ");        
+            }
+            
+           // car run forward and turn right 
+            if(ps2x.Button(PSB_PAD_RIGHT))  {
+               car_forward(255, 150);
+               Serial.println("car  run rorward and turn right");
+                 
+            }
+
+           
+            // car run forward turn left  
+            if(ps2x.Button(PSB_PAD_LEFT))  {
+                car_forward(150, 255);
+                Serial.println("car  run rorward and turn left");
+                 
+            }
+
+
+            vibrate = ps2x.Analog(PSAB_CROSS);
+            
+            // car run turn right 
+             if(ps2x.ButtonPressed(PSB_CIRCLE)) { //will be TRUE if button was JUST pressed
+              //  car_turn_right();
+                car_turn_left();
+                delay(20);
+                Serial.println("car turn right");
+             }              
+
+             // car  turn left
+            if(ps2x.ButtonReleased(PSB_SQUARE))  {
+               car_turn_right();
+                delay(20);
+                Serial.println("car turn left");
+    
+             
+            }
+
+
+            /*/ car run back and turn reght 
+            if(ps2x.Button(PSB_PAD_DOWN) || ps2x.ButtonPressed(PSB_CIRCLE))  {
+                 car_back(255, 150);
+                 Serial.println("car  run back and turn reght");
+            }
+
+            // car run forward and turn left 
+            if( ps2x.Button(PSB_PAD_DOWN) || ps2x.ButtonReleased(PSB_SQUARE))  {
+                 car_back(150, 255);
+                 Serial.println("car  run back and turn left");
+            }*/
+
+            // kick ball
+         //   if(ps2x.NewButtonState(PSB_CROSS)) {
+              //  kick_ball();
+             //   Serial.println("car  kick ball");
+            }
+        
+        delay(100); 
+
+    }
